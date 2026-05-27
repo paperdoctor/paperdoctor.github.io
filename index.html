@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperDoctor: Evidence-Grounded and Actionable Feedback for Scientific Papers in Progress</title>
+<meta name="description" content="PaperDoctor is an agent framework for pre-submission paper feedback: evidence-grounded, actionable diagnoses across writing, layout, references, code, theory, prior work, and experiments.">
+<meta property="og:title" content="PaperDoctor: Evidence-Grounded and Actionable Feedback for Scientific Papers in Progress">
+<meta property="og:description" content="An AI advisor that diagnoses your paper draft — pointing to where each issue is, why it matters, and how to fix it.">
+<meta property="og:image" content="assets/interface.png">
+<meta property="og:type" content="website">
+<link rel="icon" type="image/png" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Newsreader:ital,opsz@0,6..72;1,6..72&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fbfbfa;
+    --ink:#1a1a1a;
+    --muted:#666;
+    --line:#e7e5e0;
+    --card:#ffffff;
+    --accent:#2563a6;          /* L overall */
+    --l1:#3b82f6;              /* surface  */
+    --l2:#8b5cf6;              /* verify   */
+    --l3:#ef6c4d;             /* reproduce */
+    --why:#e35d6a;
+    --where:#2f9e7e;
+    --how:#5b7bd6;
+    --maxw:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  /* ---------- nav ---------- */
+  nav{position:sticky;top:0;z-index:50;background:rgba(251,251,250,.85);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+  nav .brand{display:flex;align-items:center;gap:9px;font-weight:700}
+  nav .brand img{height:24px;width:auto}
+  nav .links{display:flex;gap:22px;font-size:14px;font-weight:500}
+  nav .links a{color:var(--ink)}
+  @media(max-width:640px){nav .links{display:none}}
+
+  /* ---------- hero ---------- */
+  header{padding:64px 0 36px;text-align:center}
+  header .logo{height:96px;width:auto;margin-bottom:22px}
+  h1.title{
+    font-family:'Newsreader',serif;font-weight:600;font-size:40px;line-height:1.18;
+    letter-spacing:-.01em;margin:0 auto 6px;max-width:880px;
+  }
+  .subtitle{font-size:19px;color:var(--muted);font-weight:500;max-width:720px;margin:10px auto 0}
+  .authors{margin:26px auto 4px;max-width:860px;font-size:16.5px;line-height:1.9}
+  .authors a{color:var(--ink);font-weight:500}
+  .authors sup{color:var(--accent);font-weight:600}
+  .affil{color:var(--muted);font-size:14.5px;margin-top:6px}
+  .corres{color:var(--muted);font-size:13px;margin-top:8px}
+
+  .btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;
+    padding:11px 20px;border-radius:999px;font-weight:600;font-size:15px;border:1px solid var(--ink);
+    transition:transform .12s ease,box-shadow .12s ease;
+  }
+  .btn:hover{text-decoration:none;transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.12)}
+  .btn.ghost{background:#fff;color:var(--ink)}
+  .btn svg{width:17px;height:17px;fill:currentColor}
+
+  /* ---------- sections ---------- */
+  section{padding:52px 0;border-top:1px solid var(--line)}
+  h2{font-family:'Newsreader',serif;font-weight:600;font-size:30px;letter-spacing:-.01em;text-align:center;margin:0 0 8px}
+  .lead{text-align:center;color:var(--muted);max-width:640px;margin:0 auto 36px;font-size:16px}
+  p.body{font-size:17px;max-width:780px;margin:0 auto}
+
+  /* teaser */
+  .teaser{padding-top:8px}
+  figure{margin:0}
+  .figframe{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 10px 40px rgba(0,0,0,.06)}
+  .figframe img{width:100%;display:block;border-radius:8px}
+  figcaption{font-size:14px;color:var(--muted);margin-top:14px;max-width:840px;margin-left:auto;margin-right:auto;text-align:center}
+  figcaption b{color:var(--ink)}
+
+  /* triple */
+  .triple{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:8px}
+  @media(max-width:760px){.triple{grid-template-columns:1fr}}
+  .tcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;border-top:4px solid}
+  .tcard.why{border-top-color:var(--why)}
+  .tcard.where{border-top-color:var(--where)}
+  .tcard.how{border-top-color:var(--how)}
+  .tcard .tag{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  .tcard.why .tag{color:var(--why)}
+  .tcard.where .tag{color:var(--where)}
+  .tcard.how .tag{color:var(--how)}
+  .tcard h3{margin:6px 0 8px;font-size:19px}
+  .tcard p{margin:0;color:#444;font-size:15px}
+
+  /* contributions */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:760px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+  .card .num{font-family:'Newsreader',serif;font-size:30px;color:var(--accent);font-weight:600;line-height:1}
+  .card h3{margin:12px 0 8px;font-size:18px}
+  .card p{margin:0;color:#444;font-size:15px}
+
+  /* pipeline levels */
+  .levels{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:760px){.levels{grid-template-columns:1fr}}
+  .lvl{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;border-left:5px solid}
+  .lvl.a{border-left-color:var(--l1)}
+  .lvl.b{border-left-color:var(--l2)}
+  .lvl.c{border-left-color:var(--l3)}
+  .lvl .badge{display:inline-block;font-weight:700;font-size:13px;padding:3px 10px;border-radius:999px;color:#fff}
+  .lvl.a .badge{background:var(--l1)}
+  .lvl.b .badge{background:var(--l2)}
+  .lvl.c .badge{background:var(--l3)}
+  .lvl h3{margin:12px 0 6px;font-size:18px}
+  .lvl p{margin:0 0 12px;color:#444;font-size:14.5px}
+  .lvl ul{margin:0;padding-left:18px;color:#444;font-size:14px}
+  .lvl li{margin:3px 0}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:8px}
+  @media(max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;text-align:center}
+  .stat .big{font-family:'Newsreader',serif;font-size:42px;font-weight:600;color:var(--accent);line-height:1}
+  .stat .lbl{margin-top:8px;color:var(--muted);font-size:14px}
+
+  /* bibtex */
+  pre{background:#1e1e22;color:#e8e8e8;border-radius:12px;padding:22px;overflow-x:auto;font-size:13.5px;line-height:1.7;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .copy{float:right;background:#33333a;color:#ddd;border:none;border-radius:6px;padding:5px 11px;font-size:12px;cursor:pointer;font-weight:600}
+  .copy:hover{background:#44444e}
+
+  footer{padding:40px 0 56px;border-top:1px solid var(--line);text-align:center;color:var(--muted);font-size:14px}
+  footer img{height:30px;opacity:.7;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <span class="brand"><img src="assets/logo.png" alt="">PaperDoctor</span>
+    <span class="links">
+      <a href="#abstract">Abstract</a>
+      <a href="#approach">Approach</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#results">Results</a>
+      <a href="#bibtex">BibTeX</a>
+    </span>
+  </div>
+</nav>
+
+<header>
+  <div class="wrap">
+    <img class="logo" src="assets/logo.png" alt="PaperDoctor logo">
+    <h1 class="title">Evidence-Grounded and Actionable Feedback<br>for Scientific Papers in Progress</h1>
+    <div class="subtitle">An AI advisor that diagnoses your draft — pointing to <em>where</em> each issue is, <em>why</em> it matters, and <em>how</em> to fix it.</div>
+
+    <div class="authors">
+      <div>Kevin Qinghong Lin<sup>1</sup>, Siyuan Hu<sup>3</sup>, Pan Lu<sup>2</sup>, Yu Chen<sup>1</sup>, Yanzhe Chen<sup>3</sup>, Owen Queen<sup>2</sup>, Yupeng Chen<sup>1</sup>, Jialin Yu<sup>1</sup></div>
+      <div>Junchi Yu<sup>1</sup>, Zifeng Ding<sup>5</sup>, Yuanfeng Ji<sup>2</sup>, Sheng Liu<sup>2</sup>, Jindong Gu<sup>1</sup>, Linjie Li<sup>4</sup>, Mike Zheng Shou<sup>3</sup></div>
+      <div>Philip Torr<sup>1,&#9993;</sup>, James Zou<sup>2,&#9993;</sup></div>
+    </div>
+    <div class="affil"><sup>1</sup>University of Oxford &nbsp;·&nbsp; <sup>2</sup>Stanford University &nbsp;·&nbsp; <sup>3</sup>National University of Singapore &nbsp;·&nbsp; <sup>4</sup>University of Washington &nbsp;·&nbsp; <sup>5</sup>University of Cambridge</div>
+    <div class="corres">&#9993; Corresponding authors</div>
+
+    <div class="btns">
+      <a class="btn" href="paper/paperdoctor.pdf">
+        <svg viewBox="0 0 24 24"><path d="M6 2h9l5 5v15a0 0 0 0 1 0 0H6a0 0 0 0 1 0 0V2zm8 1.5V8h4.5L14 3.5zM8 13h8v1.5H8V13zm0 3h8v1.5H8V16zm0-6h4v1.5H8V10z"/></svg>
+        Paper (PDF)
+      </a>
+      <a class="btn ghost" href="https://arxiv.org/" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M3 4h18v2H3V4zm0 5h18v2H3V9zm0 5h12v2H3v-2zm0 5h12v2H3v-2z"/></svg>
+        arXiv
+      </a>
+      <a class="btn ghost" href="https://github.com/paperdoctor/paperdoctor" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6 4.6-1.5 7.9-5.8 7.9-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+        Code
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- teaser -->
+<section class="teaser" id="interface">
+  <div class="wrap">
+    <figure>
+      <div class="figframe"><img src="assets/interface.png" alt="The PaperDoctor diagnosis interface"></div>
+      <figcaption><b>The PaperDoctor diagnosis interface.</b> Authors upload their paper and code, and PaperDoctor returns a holistic report. <b>Left:</b> the paper, with each finding overlaid as a numbered, color-coded bubble anchored to the exact span it critiques (<i>Where</i>). <b>Middle:</b> a code viewer, so implementation findings can be audited against the source. <b>Right:</b> the finding card showing the observation (<i>Why</i>) and a concrete revision suggestion (<i>How</i>).</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- abstract -->
+<section id="abstract">
+  <div class="wrap">
+    <h2>Abstract</h2>
+    <p class="body">
+      Autoresearch agents are reshaping the research pipeline, but they also let flawed claims enter the literature at scale. Human advisors catch such issues on in-progress drafts through careful, traceable feedback — yet advisor-style assessment requires extensive manual effort and does not scale. To shift automated paper assessment from a <i>judge</i> to a <i>diagnostician</i>, we introduce <b>PaperDoctor</b>, an agent framework for pre-submission feedback. Every paper is evaluated across writing, layout, references, code, theory, prior work, and experiments through three layers: <b>L1</b> surface screening runs on every submission; <b>L2</b> typed verifiers route each claim to the skill that owns its evidence; and <b>L3</b> reproducers rerun experiments by priority. Each finding is a triple — an observation (<i>Why</i>), a pointer to a specific location (<i>Where</i>), and a revision suggestion (<i>How</i>) — making every critique auditable and actionable. On a human study of junior researchers' pre-submission drafts, PaperDoctor reaches <b>85% agreement</b>; across <b>60 manuscripts</b> spanning ML, the natural and social sciences, it produces more grounded feedback than human and LLM reviewers, and its reproduction stage surfaces limitations invisible from the manuscript alone.
+    </p>
+  </div>
+</section>
+
+<!-- the finding triple -->
+<section id="triple">
+  <div class="wrap">
+    <h2>Every finding is a triple</h2>
+    <p class="lead">Unlike a reviewer's verdict, each PaperDoctor finding is auditable and directly actionable.</p>
+    <div class="triple">
+      <div class="tcard why">
+        <span class="tag">Why</span>
+        <h3>The observation</h3>
+        <p>What is wrong and the reasoning behind it — flagged as an <b>error</b> when confidently incorrect, or a <b>warning</b> when it needs the author's judgment.</p>
+      </div>
+      <div class="tcard where">
+        <span class="tag">Where</span>
+        <h3>The evidence</h3>
+        <p>A pointer to the exact location: a sentence, an equation, a code line, or an external URL — so the critique can be traced without searching the paper.</p>
+      </div>
+      <div class="tcard how">
+        <span class="tag">How</span>
+        <h3>The suggestion</h3>
+        <p>A concrete revision the author can apply — not just a statement of what is wrong, but a recommendation for what to change.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- contributions -->
+<section id="approach">
+  <div class="wrap">
+    <h2>Key Innovations</h2>
+    <p class="lead">PaperDoctor reframes automated paper assessment as a diagnostic process rather than a verdict.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="num">01</div>
+        <h3>Holistic, hierarchical pipeline</h3>
+        <p>A paper, its code, and its data are decomposed across seven dimensions and organized into three levels of increasing cost — spending effort proportional to the cost of verification.</p>
+      </div>
+      <div class="card">
+        <div class="num">02</div>
+        <h3>Evidence-grounded, actionable feedback</h3>
+        <p>Each finding pairs an observation (<i>Why</i>) with a concrete location (<i>Where</i>) and a revision suggestion (<i>How</i>), making every critique auditable and fixable.</p>
+      </div>
+      <div class="card">
+        <div class="num">03</div>
+        <h3>Effective experimental reproduction</h3>
+        <p>Beyond reading, PaperDoctor selectively rebuilds and reruns experiments by claim importance and compute budget — surfacing reproducibility gaps invisible from the manuscript alone.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- pipeline -->
+<section id="pipeline">
+  <div class="wrap">
+    <h2>A Three-Level Pipeline</h2>
+    <p class="lead">Cheap screens run by default; typed verifiers are routed by evidence; full reproduction is gated on the author's approval.</p>
+    <div class="levels">
+      <div class="lvl a">
+        <span class="badge">L1 · Surface Screening</span>
+        <h3>Read the manuscript</h3>
+        <p>Low-cost, mostly objective checks that run directly on every submission. All four skills run in parallel.</p>
+        <ul>
+          <li><b>Writing</b> — typos, grammar, phrasing</li>
+          <li><b>Figure &amp; layout</b> — overflow, captions, contrast</li>
+          <li><b>Citations</b> — does each reference resolve?</li>
+          <li><b>Claim extraction</b> — atomic, typed claims</li>
+        </ul>
+      </div>
+      <div class="lvl b">
+        <span class="badge">L2 · Claim Verification</span>
+        <h3>Route each claim to its evidence</h3>
+        <p>Every extracted claim is dispatched to the verifier that owns its evidence. Verifiers and per-claim dispatch run in parallel.</p>
+        <ul>
+          <li><b>Code</b> — claims vs. released source</li>
+          <li><b>Theory</b> — re-derive proofs step by step</li>
+          <li><b>Literature</b> — novelty &amp; cited facts via web search</li>
+          <li><b>Experiment design</b> — fairness, ablations, rigor</li>
+        </ul>
+      </div>
+      <div class="lvl c">
+        <span class="badge">L3 · Reproduction</span>
+        <h3>Rerun the experiments</h3>
+        <p>The most expensive stage. A prioritized plan from L2 is executed only with the author's approval, spending compute where evidence is the constraint.</p>
+        <ul>
+          <li>Build the environment</li>
+          <li>Run by priority &amp; feasibility</li>
+          <li>Compare reproduced vs. reported numbers</li>
+          <li>Flag pass / warning / error on the gap</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- results -->
+<section id="results">
+  <div class="wrap">
+    <h2>Results</h2>
+    <p class="lead">PaperDoctor's feedback is more grounded than human and LLM reviewers, and tracks paper quality.</p>
+    <div class="stats">
+      <div class="stat"><div class="big">85%</div><div class="lbl">author agreement in the human study</div></div>
+      <div class="stat"><div class="big">60</div><div class="lbl">manuscripts across ML, natural &amp; social sciences</div></div>
+      <div class="stat"><div class="big">100%</div><div class="lbl">of findings grounded to a concrete locus<br>(vs. 25% human · 51% LLM)</div></div>
+      <div class="stat"><div class="big">7</div><div class="lbl">assessment dimensions, from writing to reproduction</div></div>
+    </div>
+    <p class="body" style="margin-top:32px">
+      Human and LLM reviewers concentrate ~76–90% of their attention on the paper body, rarely opening the released code. PaperDoctor distributes attention differently — <b>18%</b> of its findings check the surrounding literature and <b>12%</b> verify the released code — and by executing that code it uncovers discrepancies between reported and actual results that reading-only review cannot detect.
+    </p>
+  </div>
+</section>
+
+<!-- bibtex -->
+<section id="bibtex">
+  <div class="wrap">
+    <h2>BibTeX</h2>
+    <p class="lead">If you find PaperDoctor useful, please consider citing:</p>
+    <pre><button class="copy" onclick="copyBib(this)">Copy</button><code id="bib">@article{lin2026paperdoctor,
+  title   = {PaperDoctor: Evidence-Grounded and Actionable Feedback
+             for Scientific Papers in Progress},
+  author  = {Lin, Kevin Qinghong and Hu, Siyuan and Lu, Pan and Chen, Yu and
+             Chen, Yanzhe and Queen, Owen and Chen, Yupeng and Yu, Jialin and
+             Yu, Junchi and Ding, Zifeng and Ji, Yuanfeng and Liu, Sheng and
+             Gu, Jindong and Li, Linjie and Shou, Mike Zheng and
+             Torr, Philip and Zou, James},
+  journal = {arXiv preprint},
+  year    = {2026}
+}</code></pre>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <img src="assets/logo.png" alt="PaperDoctor"><br>
+    University of Oxford · Stanford University · National University of Singapore · University of Washington · University of Cambridge<br>
+    <span style="font-size:13px">Released under the MIT License. &nbsp;·&nbsp; <a href="https://github.com/paperdoctor/paperdoctor">GitHub</a></span>
+  </div>
+</footer>
+
+<script>
+  function copyBib(btn){
+    const t = document.getElementById('bib').innerText;
+    navigator.clipboard.writeText(t).then(()=>{
+      const old = btn.innerText; btn.innerText = 'Copied!';
+      setTimeout(()=>btn.innerText = old, 1500);
+    });
+  }
+</script>
+</body>
+</html>
